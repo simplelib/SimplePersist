@@ -1,0 +1,209 @@
+Sommaire
+
+	1) Qu'est-ce que SimplePersist ?
+	2) A qui s'adresse cette librairie ?
+	3) Ce que SimplePersist ne fait pas.
+	4) Premiers pas
+		A - Connexion à une base de données
+		B - Définir une entité
+		C - Ajouter des membres (colonnes)
+		D - Générer la Table en BDD
+		E - Insérer, modifier, supprimer une entité (avec ou SANS SGBD)
+		F - Effectuer une requête simple (avec ou SANS SGBD)
+		G - Effectuer une requête SQL (SGBD compatible seulement)
+		H - Activer / Désactiver le cache de requête
+		I - Utiliser des fonctionnalités avancées
+		
+1) Qu'est-ce que Simple Persist ?
+
+	SimplePersist est une librairie de persistance Java. Son objectif est d'être avant tout ultra-légère, performante et simple d'utilisation. Ainsi, elle s'avère idéale pour les projets dont la persistance doit être rapidement opérationnelle afin de focaliser tous les efforts sur d'autres aspects. Les opérations de base peuvent être effectuées sans aucune connaissance des SGBD et du langage SQL. Cependant SimplePersist fournit également une interface pour effectuer des requêtes avancées.
+
+	SimplePersist est utilisable en mode déconnecté. Il permet de manipuler et d'effectuer simplement des requêtes simples sur des collections d'objets. Ainsi, grace à un système de persistance purement Java minimaliste, vous pouvez à tout moment de connecter ou non votre projet à un SGBD sans rien modifier au code déjà écrit.
+
+	Avec SimplePersist, vous ne vous occuperez plus de la persistance de vos objets. Car la librairie fournie entre autre :
+
+		- Un système de requête typé, par modèle objet. Très simple d'utilisation.
+		
+		- Une fonction de génération automatique des tables en BDD. A utiliser (ou non, si vous préférez en assumer la création) au besoin.
+		
+		- Aucun fichier de configuration nécessaire. Pas de fichier XML de description des classes. Les entités sont analysées par réflection. La liaison avec les colonnes d'une table se fait de manière automatique, le nom des colonnes peut cependant être défini explicitement par de simples annotations.
+		
+		- La possibilité de l'utiliser indifféremment qu'elle soit connectée ou non à un SGBD.
+
+2) A qui s'adresse cette librairie ?
+
+	- Premièrement aux débutants
+		SimplePersist permet le développement d'applications complètes sans plus se soucier de la persistance des objets. Celle-ci étant entièrement prise en charge par la librairie. De plus son utilisation ne demande que peu de pratique, la librairie se veut avant tout simple à utiliser.
+	- A ceux qui recherchent avant tout la productivité
+		SimplePersist de par sa faible configuration et son automatisation est très rapide à mettre en place. La création et la modification de classes déjà existantes n'entraine plus de lourdes modifications du code. Le développement en est grandement accéléré.
+	- A ceux qui aiment la simplicité
+		L'éventail de possibilités de la librairie est restreint, les mécanismes utilisés sont similaires et intuitifs. Il serait facile d'écrire une classe intermédiaire pour migrer de SimplePersist vers une autre librairie de Persistance si le besoin s'en faisait ressentir.
+	- A ceux qui ont besoin d'une librairie très légère
+		SimplePersist est une librairie très légère qui limite l'allourdissement de votre projet.
+		
+3) Ce que SimplePersist ne fait pas
+	Premièrement, SimplePersist est en Beta-Testing. Il n'existe pas encore de version finale destinée à la mise en production. Ainsi, certaines fonctionnalités sont peut-être amenées à évoluer, si de nombreux retours le suggèrent. Ce qui ne l'empèche pas d'être utilisée dans plusieurs projets. Cela implique cependant que les utilisateurs prennent connaissance et accepte les quelques limitations actuelles.
+	
+	SimplePersist n'est pas une usine à gaz qui voudrait offrir un éventail de fonctionnalités le plus large possible. SimplePersist se concentre simplement sur ce qui est nécessaire. Ainsi son utilisation demande quelques bonnes pratiques qui n'en limite cependant pas l'utilisation.
+
+	Par exemple, avec SimplePersist, vous ne ferez pas ceci :
+
+		class Ville extends Entity<Ville> {
+			private List<Rue> listeRue;
+			
+			public List<Rue> getListeRue() {
+				return listeRue;
+			}
+			...
+		}
+		class Rue extends Entity<Rue> {
+			...
+		}
+
+		Mais ceci :
+
+		class Ville extends Entity<Ville> {
+			public List<Rue> getListRue() {
+				// Libre à vous de gérer une éventuelle mise en cache
+				return new Rue(getId()).search();
+			}
+		}
+		class Rue extends Entity<Rue> {
+			private int idVille;
+			
+			public Rue(int ville) {
+				this.idVille = ville;
+			}
+			...
+		}
+
+	Pourquoi ?
+
+	Parce que ceci est bien plus en accord avec l'architecture des tables en BDD. Ainsi, SimplePersist ne fait jamais de requêtes en tache de fond pour pepler des listes sans que vous ne le définissiez explicitement. D'ailleurs d'autres librairies remplissent déjà très bien cette tâche.
+
+4) Premiers pas
+
+	A - Connexion à une base de données
+
+		Si vous ne souhaitez pas connecter SimplePersist à une base de données, sautez cette étape. Sachez que vous pourrez toujours le faire après coup sans modifier votre programme.
+
+		Vous devez au préalable créer un fichier nomconnexion.properties
+		Ensuite vous devez le renseigner de la manière suivante :
+
+			# Informations d'accès à la base de données.
+			user=votre_nom_utilisateur
+			password=votre_mot_de_passe
+			
+			# Pour PostgreSql :
+			url=jdbc:postgresql:nom_base 
+			driver=org.postgresql.Driver
+		
+		Il suffit ensuite d'appeler :
+			AccesBdd.connect("nomconnexion");
+		Avant toute autre requête.
+
+	B - Définir une entité
+
+		Chaque entité persistable doit être définie de la manière suivante :
+
+		class Personne extends Entity<Personne> {
+		}
+		
+		Par défaut, la persistance Objet de SimplePersist est utilisée, celle-ci permet nottament de manipuler de façon similaire les collections d'objets non-persistables, avec insert(), update() et delete() et de ceux en BDD. Ainsi, l'on peut passer d'une persistance à l'autre en ajoutant une simple annotation.
+		
+		Pour lier l'entité à une table SQL il suffit d'utiliser l'annotation @Table :
+		
+		@PrimaryKey(name = "id_mission") // Optionnel, par défaut, une colonne "id" est utilisée.
+		@Table(name = "tab_personne")
+		class Personne extends Entity<Personne> {
+		}
+		
+	C - Ajouter des membres (colonnes)
+	
+		Sans SGBD :
+		
+			private int age;
+		
+		Avec SGBD :
+		
+			private int age;
+		// ou
+			@Column(name="col_age", type="INT")
+			private int age;
+		// pour définir explicitement la colonne à utiliser.
+		
+	D - Générer la Table en BDD
+		
+		- Vous pouvez soit créer la table vous-même directement dans le SGBD.
+		
+		- Ou simplement appeler le fonction :
+		
+			Queries.createTable(Personne.class).execute();
+			// La table est générée automatiquement
+	
+	E - Insérer, modifier, supprimer une entité (avec ou SANS SGBD)
+		
+		// Création d'une personne
+		Personne pere = new Personne();
+		pere.setPrenom("Patrick");
+		pere.setNom("Chirac");
+		pere.setAge(42);
+		pere.insert();
+		
+		// Modification d'une personne
+		pere.setAge(43);
+		pere.update();
+		
+		// Suppression d'une personne
+		pere.delete();
+		
+	F - Effectuer une requête simple (avec ou SANS SGBD)
+	
+		Il faut créer un modèle de recherche sur l'objet désiré :
+		
+			Personne modele = new Personne();
+			modele.setNom("Chirac");
+			List<Personne> familleChirac = modele.search();
+			
+		Limitations
+		
+		Lors d'une recherche par modèle objet, sur :
+			- un type primitif : les valeurs par défaut sont ignorées.
+			- une classe objet : les valeurs null sont ignorées.
+		
+		Pour utiliser ces valeurs dans une requête, vous devez dans ces deux cas utiliser une requête SQL à l'aide de Queries.
+			
+	G - Effectuer une requête SQL (SGBD compatible seulement)
+		
+		En utilisant la classe Queries :
+		
+			Query<List<Personne>> queryMineurs = Queries.select(Personne.class).where("age<18");
+			
+			List<Personne> listMineurs = queryMineurs.execute();
+
+	H - Activer / Désactiver le cache de requêtes
+	
+		Si vous devez supporter l'accès concurent à une Table entre plusieurs clients, il est préférable de désactiver le cache de requêtes.
+		
+		// Activer (par défaut)
+		Queries.setUseCache(true);
+		// Désactiver
+		Queries.setUseCache(false);
+		
+	I - Utiliser des fonctionnalités avancées
+	
+		Aucune limitation n'est imposée de ce point de vue. Ainsi vous avez accès à l'objet Connection et toutes les possibilités de JDBC.
+		
+		Récuppérer la connexion :
+			AccesBdd.getConnection();
+		La documentation de cette fonctionnalité ne relève plus de l'utilisation de cette librairie.
+			
+		Par exemple, pour effectuer une transaction, bien que vous puissiez appeler directement :
+			Queries.beginTran();
+			Queries.commit();
+			Queries.rollback();
+		Vous auriez pu faire ainsi :
+			AccesBdd.getConnection().setAutoCommit(false);
+			...
+			AccesBdd.getConnection().commit();
+	
