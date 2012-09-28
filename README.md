@@ -1,0 +1,4 @@
+SimplePersist
+=============
+
+Java persistence library
